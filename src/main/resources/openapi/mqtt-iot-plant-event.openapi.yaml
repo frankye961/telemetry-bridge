@@ -1,0 +1,295 @@
+openapi: 3.0.3
+info:
+  title: MQTT IoT Plant Event Schemas
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+
+    IotPlantEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - version
+        - messageId
+        - ts
+        - device
+        - zone
+        - plant
+        - reading
+        - decision
+      properties:
+        type:
+          type: string
+          enum: [IOT_PLANT_EVENT]
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+
+        messageId:
+          type: string
+          format: uuid
+
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
+
+        ts:
+          type: string
+          format: date-time
+
+        device:
+          $ref: "#/components/schemas/DeviceInfo"
+
+        zone:
+          $ref: "#/components/schemas/ZoneInfo"
+
+        plant:
+          $ref: "#/components/schemas/PlantInfo"
+
+        reading:
+          $ref: "#/components/schemas/ReadingInfo"
+
+        decision:
+          $ref: "#/components/schemas/DecisionInfo"
+
+    DeviceInfo:
+      type: object
+      additionalProperties: false
+      required: [deviceId, deviceName, model, fw, batteryMv, rssi]
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        deviceName:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          minLength: 1
+        fw:
+          type: string
+          minLength: 1
+        batteryMv:
+          type: integer
+          format: int32
+          minimum: 0
+        rssi:
+          type: integer
+          format: int32
+
+    ZoneInfo:
+      type: object
+      additionalProperties: false
+      required: [zoneId, zoneName, sensor, actuator, calibration]
+      properties:
+        zoneId:
+          type: string
+          minLength: 1
+        zoneName:
+          type: string
+          minLength: 1
+        sensor:
+          $ref: "#/components/schemas/SensorInfo"
+        actuator:
+          $ref: "#/components/schemas/ActuatorInfo"
+        calibration:
+          $ref: "#/components/schemas/CalibrationInfo"
+
+    SensorInfo:
+      type: object
+      additionalProperties: false
+      required: [type, analogPin, adcBits]
+      properties:
+        type:
+          type: string
+          minLength: 1
+        analogPin:
+          type: string
+          minLength: 1
+        adcBits:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 32
+
+    ActuatorInfo:
+      type: object
+      additionalProperties: false
+      required: [type, relayPin, pumpStatus, maxPumpMs, mlPerSecond]
+      properties:
+        type:
+          type: string
+          enum: [RELAY_PUMP]
+        relayPin:
+          type: integer
+          format: int32
+          minimum: 0
+        pumpStatus:
+          type: integer
+          format: int32
+          enum: [0, 1]
+          description: "0 = OFF, 1 = ON"
+        maxPumpMs:
+          type: integer
+          format: int32
+          minimum: 0
+        mlPerSecond:
+          type: number
+          format: double
+          minimum: 0
+
+    CalibrationInfo:
+      type: object
+      additionalProperties: false
+      required: [soilMoisture]
+      properties:
+        soilMoisture:
+          $ref: "#/components/schemas/SoilMoistureCalibration"
+
+    SoilMoistureCalibration:
+      type: object
+      additionalProperties: false
+      required: [adcDry, adcWet, calibratedAt]
+      properties:
+        adcDry:
+          type: integer
+          format: int32
+          minimum: 0
+        adcWet:
+          type: integer
+          format: int32
+          minimum: 0
+        calibratedAt:
+          type: string
+          format: date-time
+
+    PlantInfo:
+      type: object
+      additionalProperties: false
+      required: [plantId, plantName, targets]
+      properties:
+        plantId:
+          type: string
+          minLength: 1
+        plantName:
+          type: string
+          minLength: 1
+        targets:
+          $ref: "#/components/schemas/PlantTargets"
+
+    PlantTargets:
+      type: object
+      additionalProperties: false
+      required: [soilMoisturePercent, airTempC]
+      properties:
+        soilMoisturePercent:
+          $ref: "#/components/schemas/MinMaxInt"
+        airTempC:
+          $ref: "#/components/schemas/MinMaxNumber"
+
+    MinMaxInt:
+      type: object
+      additionalProperties: false
+      required: [min, max]
+      properties:
+        min:
+          type: integer
+          format: int32
+        max:
+          type: integer
+          format: int32
+
+    MinMaxNumber:
+      type: object
+      additionalProperties: false
+      required: [min, max]
+      properties:
+        min:
+          type: number
+          format: double
+        max:
+          type: number
+          format: double
+
+    ReadingInfo:
+      type: object
+      additionalProperties: false
+      required:
+        - soilMoisture
+        - airTempC
+        - airHumidityPercent
+        - lightLux
+        - waterTankPercent
+      properties:
+        soilMoisture:
+          $ref: "#/components/schemas/SoilMoistureReading"
+        airTempC:
+          type: number
+          format: double
+        airHumidityPercent:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        lightLux:
+          type: integer
+          format: int32
+          minimum: 0
+        waterTankPercent:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+
+    SoilMoistureReading:
+      type: object
+      additionalProperties: false
+      required: [raw, percent, state]
+      properties:
+        raw:
+          type: integer
+          format: int32
+          minimum: 0
+        percent:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        state:
+          type: string
+          enum: [DRY, MODERATE, WET]
+
+    DecisionInfo:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [NONE, MANUAL, AUTO, AI]
+        recommendedAction:
+          $ref: "#/components/schemas/RecommendedAction"
+          nullable: true
+
+    RecommendedAction:
+      type: object
+      additionalProperties: false
+      required: [actionType]
+      properties:
+        actionType:
+          type: string
+          enum: [WATER, STOP, NOOP]
+        pumpMs:
+          type: integer
+          format: int32
+          minimum: 0
+        mlEstimated:
+          type: number
+          format: double
+          minimum: 0
+        reason:
+          type: string

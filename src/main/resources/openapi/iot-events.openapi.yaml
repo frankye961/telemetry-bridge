@@ -1,0 +1,81 @@
+openapi: 3.0.3
+info:
+  title: Kafka IoT Event Schemas
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+
+    KafkaIotEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - kafkaKey
+        - ingestedAt
+        - source
+        - event
+      properties:
+        schemaVersion:
+          type: integer
+          format: int32
+          minimum: 1
+          description: "Version of this Kafka envelope schema"
+        kafkaKey:
+          type: string
+          description: "Key used for Kafka partitioning (usually deviceId)"
+        ingestedAt:
+          type: string
+          format: date-time
+          description: "When the bridge ingested the message"
+        source:
+          $ref: "#/components/schemas/IngressSource"
+        event:
+          $ref: "./mqtt-iot-plant-event.openapi.yaml#/components/schemas/IotPlantEvent"
+
+        # Optional enrichment block for your backend/AI
+        enrichment:
+          $ref: "#/components/schemas/EnrichmentInfo"
+          nullable: true
+
+    IngressSource:
+      type: object
+      additionalProperties: false
+      required: [protocol, topic, clientId]
+      properties:
+        protocol:
+          type: string
+          enum: [MQTT]
+        topic:
+          type: string
+          minLength: 1
+        clientId:
+          type: string
+          minLength: 1
+        qos:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2
+          nullable: true
+        retained:
+          type: boolean
+          nullable: true
+
+    EnrichmentInfo:
+      type: object
+      additionalProperties: false
+      properties:
+        receivedRssiCategory:
+          type: string
+          enum: [EXCELLENT, GOOD, FAIR, POOR]
+          nullable: true
+        soilMoistureDeltaFromTarget:
+          type: number
+          format: double
+          nullable: true
+        computedPumpMs:
+          type: integer
+          format: int32
+          minimum: 0
+          nullable: true

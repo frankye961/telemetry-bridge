@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>com.smart.watering.system.be</groupId>
-    <artifactId>smart-watering-system-be</artifactId>
+    <artifactId>telemetry-bridge</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>smart-watering-system-be</name>
+    <name>telemetry-bridge</name>
     <description>Backend for smart watering system</description>
 
     <properties>
@@ -69,12 +69,6 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
-        <!-- Reactive MongoDB -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
-        </dependency>
-
         <!-- Health/metrics -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -93,13 +87,25 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- MQTT client with Reactor-friendly API -->
+<!--        &lt;!&ndash; MQTT client with Reactor-friendly API &ndash;&gt;
         <dependency>
             <groupId>com.hivemq</groupId>
             <artifactId>hivemq-mqtt-client-reactor</artifactId>
             <version>${hivemq.mqtt.version}</version>
+        </dependency>-->
+
+        <!-- Spring Cloud Stream -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-stream</artifactId>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.springframework.integration/spring-integration-mqtt -->
+        <dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-mqtt</artifactId>
+            <version>7.0.1</version>
+        </dependency>
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -197,6 +203,17 @@
             <artifactId>hivemq-mqtt-client</artifactId>
             <version>1.3.3</version>
         </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <version>2.2.22</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.paho</groupId>
+            <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+            <version>1.2.5</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -228,6 +245,65 @@
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>${sonar.maven.plugin.version}</version>
+            </plugin>
+            <!-- OpenAPI generator (plugin; not a dependency) -->
+            <plugin>
+            <groupId>org.openapitools</groupId>
+            <artifactId>openapi-generator-maven-plugin</artifactId>
+            <version>7.8.0</version>
+            <executions>
+            <execution>
+                <goals>
+                    <goal>generate</goal>
+                </goals>
+                <configuration>
+                    <inputSpec>${project.basedir}/src/main/resources/openapi/iot-events.openapi.yaml</inputSpec>
+                    <generatorName>spring</generatorName>
+                    <apiPackage>com.smart.watering.model</apiPackage>
+                    <modelPackage>com.smart.watering.model</modelPackage>
+                    <!-- Generate MVC interfaces + ApiUtil -->
+                    <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
+                    <configOptions>
+                        <useSpringBoot3>true</useSpringBoot3>
+                        <useJakartaEe>true</useJakartaEe>
+                        <delegatePattern>true</delegatePattern>
+                        <useBeanValidation>true</useBeanValidation>
+                        <useTags>true</useTags>
+                        <generateBuilders>true</generateBuilders>
+
+                        <!-- Turn on Lombok -->
+                        <useLombok>true</useLombok>
+                    </configOptions>
+                </configuration>
+            </execution>
+            <execution>
+                <goals>
+                    <goal>generate</goal>
+                </goals>
+                <id>user-message</id>
+                <configuration>
+                    <inputSpec>
+                        ${project.basedir}/src/main/resources/openapi/mqtt-iot-plant-event.openapi.yaml
+                    </inputSpec>
+                    <generatorName>spring</generatorName>
+                    <apiPackage>com.smart.watering.model</apiPackage>
+                    <modelPackage>com.smart.watering.model</modelPackage>
+                    <!-- Generate MVC interfaces + ApiUtil -->
+                    <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
+                    <configOptions>
+                        <useSpringBoot3>true</useSpringBoot3>
+                        <useJakartaEe>true</useJakartaEe>
+                        <delegatePattern>true</delegatePattern>
+                        <useBeanValidation>true</useBeanValidation>
+                        <useTags>true</useTags>
+                        <generateBuilders>true</generateBuilders>
+
+                        <!-- Turn on Lombok -->
+                        <useLombok>true</useLombok>
+                    </configOptions>
+                </configuration>
+            </execution>
+            </executions>
             </plugin>
         </plugins>
     </build>
