@@ -1,0 +1,77 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: iot-mqtt-kafka-bridge
+
+  main:
+    web-application-type: reactive
+
+  cloud:
+    function:
+      definition: mqttSource|mqttToKafka
+
+    stream:
+      # if you ever add other binders later, this keeps behavior explicit
+      default-binder: kafka
+
+      bindings:
+        # 1) MQTT source -> "internal" stream destination
+        mqttSource-out-0:
+          destination: mqtt.internal.telemetry
+          content-type: application/json
+          producer:
+            # keep ordering per pot across the internal hop too
+            partition-key-expression: headers['kafkaKey']
+
+        # 2) internal stream -> transformer
+        mqttToKafka-in-0:
+          destination: mqtt.internal.telemetry
+          content-type: application/json
+          group: mqtt-bridge              # IMPORTANT (missing)
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-max-interval: 10000
+
+        # 3) transformer -> final Kafka topic
+        mqttToKafka-out-0:
+          destination: iot.plant.events.raw
+          content-type: application/json
+          producer:
+            partition-key-expression: headers['kafkaKey']
+
+      kafka:
+        binder:
+          brokers: localhost:9092
+          auto-create-topics: true        # dev-friendly
+          configuration:
+            acks: all
+            linger.ms: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.stream: INFO
+    reactor.kafka: WARN
+
+app:
+  mqtt:
+    host: 192.168.0.29
+    port: 1883
+    client-id: iot-mqtt-reactive-bridge
+    username: ""
+    password: ""
+    topic-filter: "iot/plant/+/+/events"
+    qos: AT_LEAST_ONCE
+
