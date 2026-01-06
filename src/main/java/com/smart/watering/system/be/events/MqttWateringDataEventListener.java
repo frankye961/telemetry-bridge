@@ -6,9 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.mqtt.support.MqttHeaders;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
 import java.util.function.Function;
@@ -58,7 +60,7 @@ public class MqttWateringDataEventListener {
     }
 
     private Message<String> processMessage(Message<String> inbound) {
-        String topic = (String) inbound.getHeaders().get("mqttTopic");
+        String topic = (String) inbound.getHeaders().get(MqttHeaders.RECEIVED_TOPIC);
         String kafkaKey = extractKeyFromTopic(topic);
         log.info("logging payload incoming {}", inbound.getPayload());
         metrics.incrementSuccessfulMessages();

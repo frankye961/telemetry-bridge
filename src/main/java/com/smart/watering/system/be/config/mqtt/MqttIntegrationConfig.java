@@ -1,30 +1,44 @@
 package com.smart.watering.system.be.config.mqtt;
 
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.integration.channel.DirectChannel;
+import org.springframework.integration.channel.FluxMessageChannel;
 import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
+import org.springframework.integration.mqtt.support.MqttHeaders;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import reactor.core.publisher.Flux;
 
-import java.util.Objects;
+import java.util.UUID;
 
 @Configuration
+@EnableConfigurationProperties(MqttProps.class)
 public class MqttIntegrationConfig {
 
+    /**
+     * Reactive channel so you can consume MQTT as a Flux downstream (WebFlux-friendly).
+     */
     @Bean
     public MessageChannel mqttInputChannel() {
-        return new DirectChannel();
+        return new FluxMessageChannel();
     }
 
     @Bean
     public MqttConnectOptions mqttConnectOptions(MqttProps props) {
         MqttConnectOptions options = new MqttConnectOptions();
-        options.setServerURIs(new String[] { props.host() });
+
+        // Must include scheme: tcp://host:port or ssl://host:port
+        options.setServerURIs(new String[]{props.brokerUri()});
+
+        options.setAutomaticReconnect(true);
         options.setCleanSession(true);
+        options.setConnectionTimeout(10);
+        options.setKeepAliveInterval(30);
 
         if (props.username() != null && !props.username().isBlank()) {
             options.setUserName(props.username());
@@ -32,6 +46,7 @@ public class MqttIntegrationConfig {
         if (props.password() != null && !props.password().isBlank()) {
             options.setPassword(props.password().toCharArray());
         }
+
         return options;
     }
 
@@ -46,22 +61,34 @@ public class MqttIntegrationConfig {
     public MessageProducer mqttInbound(
             MqttPahoClientFactory factory,
             MqttProps props,
-            MessageChannel mqttInputChannel) {
+            MessageChannel mqttInputChannel
+    ) {
+        String topic = props.topic();
+        if (topic == null || topic.isBlank()) {
+            throw new IllegalStateException("Missing MQTT topic filter. Set app.mqtt.topic.");
+        }
 
-        String[] topics = props.subscriptions().stream()
-                .map(Subscription::topic)
-                .filter(Objects::nonNull)
-                .toArray(String[]::new);
+        // Avoid clientId collisions if you run multiple instances in dev
+        String baseClientId = (props.clientId() == null || props.clientId().isBlank())
+                ? "telemetry-bridge"
+                : props.clientId();
+        String clientId = baseClientId + "-" + UUID.randomUUID();
 
-        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(props.clientId(), factory, topics);
+        MqttPahoMessageDrivenChannelAdapter adapter =
+                new MqttPahoMessageDrivenChannelAdapter(clientId, factory, topic);
 
-        // QoS per-topic (Spring Integration supports int[] here)
-        int[] qos = props.subscriptions().stream().mapToInt(Subscription::qos).toArray();
-        adapter.setQos(qos);
-
+        adapter.setQos(props.qos()); // 0/1/2
+        adapter.setCompletionTimeout(5_000);
         adapter.setOutputChannel(mqttInputChannel);
-        adapter.setCompletionTimeout(5000);
 
         return adapter;
+    }
+
+    /**
+     * Expose inbound MQTT messages as a Flux for your Supplier<Flux<...>> function.
+     */
+    @Bean
+    public Flux<Message<?>> mqttInboundFlux(FluxMessageChannel mqttInputChannel) {
+        return Flux.from(mqttInputChannel);
     }
 }

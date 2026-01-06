@@ -1,8 +1,10 @@
 package com.smart.watering.system.be.event;
 
 
+import com.smart.watering.system.be.TelemetryApplication;
 import com.smart.watering.system.be.config.mqtt.MqttInbound;
 import com.smart.watering.system.be.events.MqttWateringDataEventListener;
+import com.smart.watering.system.be.metrics.MeterMetrics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,11 +17,14 @@ import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest(classes = MqttWateringDataEventListener.class)
+
+@SpringBootTest(classes = TelemetryApplication.class)
 class MqttToKafkaFunctionSpringTest {
 
     @Autowired
     private MqttWateringDataEventListener functions;
+    @Autowired
+    private MeterMetrics metrics;
 
     @Autowired
     private Flux<MqttInbound> mqttInboundFlux;

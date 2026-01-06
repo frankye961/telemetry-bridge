@@ -10,34 +10,34 @@ spring:
 
   cloud:
     function:
-      definition: mqttSource;mqttToKafka
+      # Use '|' if you want composition (mqttSource -> mqttToKafka).
+      # If you keep them independent, use ';'
+      definition: mqttSource|mqttToKafka
 
     stream:
-      # if you ever add other binders later, this keeps behavior explicit
       default-binder: kafka
 
       bindings:
-        # 1) MQTT source -> "internal" stream destination
         mqttSource-out-0:
           destination: mqtt.internal.telemetry
           content-type: application/json
 
-        # 2) internal stream -> transformer
         mqttToKafka-in-0:
           destination: mqtt.internal.telemetry
           content-type: application/json
-          group: mqtt-bridge              # IMPORTANT (missing)
-          dlqName: iot.plant.events.dlq
+          group: mqtt-bridge
 
-        # 3) transformer -> final Kafka topic
         mqttToKafka-out-0:
           destination: iot.plant.events.raw
           content-type: application/json
+          producer:
+            # this matches what you're setting in code: KafkaHeaders.KEY
+            partition-key-expression: "headers['kafka_messageKey']"
 
       kafka:
         binder:
           brokers: ${SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS:localhost:9092}
-          auto-create-topics: true        # dev-friendly
+          auto-create-topics: true
           configuration:
             acks: all
             linger.ms: 5
@@ -59,10 +59,10 @@ logging:
 
 app:
   mqtt:
-    host: ${APP_MQTT_HOST:localhost}
-    port: ${APP_MQTT_PORT:1883}
+    # IMPORTANT: must include scheme
+    broker-uri: ${APP_MQTT_BROKER_URI:tcp://${APP_MQTT_HOST:localhost}:${APP_MQTT_PORT:1883}}
+    client-id: ${APP_MQTT_CLIENT_ID:telemetry-bridge}
+    topic: ${APP_MQTT_TOPIC:iot/plant/+/+/events}
+    qos: ${APP_MQTT_QOS:1}
     username: ${APP_MQTT_USERNAME:}
     password: ${APP_MQTT_PASSWORD:}
-    client-id: ${APP_MQTT_CLIENT_ID:smart-watering-be}
-    ssl-enabled: ${APP_MQTT_SSL_ENABLED:false}
-

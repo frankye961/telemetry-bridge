@@ -26,7 +26,7 @@ services:
       APP_MQTT_CLIENT_ID: "${MQTT_CLIENT_ID:-smart-watering-be}"
       APP_MQTT_SSL_ENABLED: "${MQTT_SSL_ENABLED:-false}"
 
-    # Optional: if the remote services are not reachable without host DNS
+    # Optional: if the remote services are not reachable without brokerUri DNS
     # dns:
     #   - 1.1.1.1
     #   - 8.8.8.8
