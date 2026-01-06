@@ -32,14 +32,14 @@ public class MqttWateringDataEventListener {
         return () -> inbound
                 .doOnNext(msg -> {
                     log.info("MQTT in topic={} payload={}", msg.topic(), msg.payload());
-                    metrics.incrementUserSuccessfulMessages();
+                    metrics.incrementSuccessfulMessages();
                 })
                 .map(msg -> MessageBuilder.withPayload(msg.payload())
                         .setHeader(MQTT_TOPIC_HEADER, msg.topic())
                         .build())
                 .doOnError(e -> {
                     log.error("Error in mqttSource stream", e);
-                    metrics.incrementUserFailedMessages();
+                    metrics.incrementFailedMessages();
                 })
                 .onErrorResume(e -> Flux.empty());
     }
@@ -61,7 +61,7 @@ public class MqttWateringDataEventListener {
         String topic = (String) inbound.getHeaders().get("mqttTopic");
         String kafkaKey = extractKeyFromTopic(topic);
         log.info("logging payload {}", inbound.getPayload());
-        metrics.incrementUserSuccessfulMessages();
+        metrics.incrementSuccessfulMessages();
         return MessageBuilder.withPayload(inbound.getPayload())
                 .copyHeaders(inbound.getHeaders())
                 .setHeader(KafkaHeaders.KEY, kafkaKey)
@@ -69,7 +69,7 @@ public class MqttWateringDataEventListener {
     }
 
     private Message<String> sendToDlq(Message<String> inbound) {
-        metrics.incrementUserFailedMessages();
+        metrics.incrementFailedMessages();
         return MessageBuilder.withPayload(inbound.getPayload())
                 .copyHeaders(inbound.getHeaders())
                 .build();

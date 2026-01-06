@@ -20,11 +20,11 @@ public class MeterMetrics {
                 .register(registry);
     }
 
-    public void incrementUserSuccessfulMessages(){
+    public void incrementSuccessfulMessages(){
         succesfullMessages.increment();
     }
 
-    public void incrementUserFailedMessages(){
+    public void incrementFailedMessages(){
         failedMessages.increment();
     }
 }

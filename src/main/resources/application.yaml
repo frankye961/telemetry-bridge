@@ -36,7 +36,7 @@ spring:
 
       kafka:
         binder:
-          brokers: localhost:9092
+          brokers: ${SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS:localhost:9092}
           auto-create-topics: true        # dev-friendly
           configuration:
             acks: all
@@ -59,11 +59,10 @@ logging:
 
 app:
   mqtt:
-    host: 192.168.0.29
-    port: 1883
-    client-id: iot-mqtt-reactive-bridge
-    username: ""
-    password: ""
-    topic-filter: "iot/plant/+/+/events"
-    qos: AT_LEAST_ONCE
+    host: ${APP_MQTT_HOST:localhost}
+    port: ${APP_MQTT_PORT:1883}
+    username: ${APP_MQTT_USERNAME:}
+    password: ${APP_MQTT_PASSWORD:}
+    client-id: ${APP_MQTT_CLIENT_ID:smart-watering-be}
+    ssl-enabled: ${APP_MQTT_SSL_ENABLED:false}
 
