@@ -3,14 +3,14 @@ server:
 
 spring:
   application:
-    name: iot-mqtt-kafka-bridge
+    name: telemetry-bridge
 
   main:
     web-application-type: reactive
 
   cloud:
     function:
-      definition: mqttSource|mqttToKafka
+      definition: mqttSource;mqttToKafka
 
     stream:
       # if you ever add other binders later, this keeps behavior explicit
@@ -21,26 +21,18 @@ spring:
         mqttSource-out-0:
           destination: mqtt.internal.telemetry
           content-type: application/json
-          producer:
-            # keep ordering per pot across the internal hop too
-            partition-key-expression: headers['kafkaKey']
 
         # 2) internal stream -> transformer
         mqttToKafka-in-0:
           destination: mqtt.internal.telemetry
           content-type: application/json
           group: mqtt-bridge              # IMPORTANT (missing)
-          consumer:
-            max-attempts: 3
-            back-off-initial-interval: 1000
-            back-off-max-interval: 10000
+          dlqName: iot.plant.events.dlq
 
         # 3) transformer -> final Kafka topic
         mqttToKafka-out-0:
           destination: iot.plant.events.raw
           content-type: application/json
-          producer:
-            partition-key-expression: headers['kafkaKey']
 
       kafka:
         binder:

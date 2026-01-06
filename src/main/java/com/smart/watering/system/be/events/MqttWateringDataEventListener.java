@@ -1,8 +1,9 @@
 package com.smart.watering.system.be.events;
 
 import com.smart.watering.system.be.config.mqtt.MqttInbound;
-import io.reactivex.functions.Function;
+import com.smart.watering.system.be.metrics.MeterMetrics;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -10,33 +11,68 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import reactor.core.publisher.Flux;
 
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Slf4j
 @Configuration
 public class MqttWateringDataEventListener {
 
+    private final MeterMetrics metrics;
+
+    private static final String MQTT_TOPIC_HEADER = "mqttTopic";
+
+    @Autowired
+    public MqttWateringDataEventListener(MeterMetrics metrics) {
+        this.metrics = metrics;
+    }
+
     @Bean
     public Supplier<Flux<Message<String>>> mqttSource(Flux<MqttInbound> inbound) {
-        return () -> inbound.map(msg -> {
-            log.info("logging msg {}", msg.payload());
-            return MessageBuilder.withPayload(msg.payload())
-                    .setHeader(KafkaHeaders.TOPIC, msg.topic())
-                    .build();
-        });
+        return () -> inbound
+                .doOnNext(msg -> {
+                    log.info("MQTT in topic={} payload={}", msg.topic(), msg.payload());
+                    metrics.incrementUserSuccessfulMessages();
+                })
+                .map(msg -> MessageBuilder.withPayload(msg.payload())
+                        .setHeader(MQTT_TOPIC_HEADER, msg.topic())
+                        .build())
+                .doOnError(e -> {
+                    log.error("Error in mqttSource stream", e);
+                    metrics.incrementUserFailedMessages();
+                })
+                .onErrorResume(e -> Flux.empty());
     }
 
     @Bean
     public Function<Flux<Message<String>>, Flux<Message<String>>> mqttToKafka() {
-        return inbound -> inbound.map(msg -> {
-            String topic = (String) msg.getHeaders().get("mqttTopic");
-            String kafkaKey = extractKeyFromTopic(topic);
-            log.info("logging payload {}", msg.getPayload());
-            return MessageBuilder.withPayload(msg.getPayload())
-                    .copyHeaders(msg.getHeaders())
-                    .setHeader(KafkaHeaders.KEY, kafkaKey)
-                    .build();
-        });
+        return inbound -> inbound
+                .map(msg -> {
+                    try {
+                        log.info("Message processing {}", msg.getPayload());
+                        return processMessage(msg);
+                    } catch (Exception e) {
+                        return sendToDlq(msg);
+                    }
+                });
+    }
+
+    private Message<String> processMessage(Message<String> inbound) {
+        String topic = (String) inbound.getHeaders().get("mqttTopic");
+        String kafkaKey = extractKeyFromTopic(topic);
+        log.info("logging payload {}", inbound.getPayload());
+        metrics.incrementUserSuccessfulMessages();
+        return MessageBuilder.withPayload(inbound.getPayload())
+                .copyHeaders(inbound.getHeaders())
+                .setHeader(KafkaHeaders.KEY, kafkaKey)
+                .build();
+    }
+
+    private Message<String> sendToDlq(Message<String> inbound) {
+        metrics.incrementUserFailedMessages();
+        return MessageBuilder.withPayload(inbound.getPayload())
+                .copyHeaders(inbound.getHeaders())
+                .build();
     }
 
     private static String extractKeyFromTopic(String topic) {
