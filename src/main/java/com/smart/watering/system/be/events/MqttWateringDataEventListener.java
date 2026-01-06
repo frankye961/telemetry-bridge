@@ -60,7 +60,7 @@ public class MqttWateringDataEventListener {
     private Message<String> processMessage(Message<String> inbound) {
         String topic = (String) inbound.getHeaders().get("mqttTopic");
         String kafkaKey = extractKeyFromTopic(topic);
-        log.info("logging payload {}", inbound.getPayload());
+        log.info("logging payload incoming {}", inbound.getPayload());
         metrics.incrementSuccessfulMessages();
         return MessageBuilder.withPayload(inbound.getPayload())
                 .copyHeaders(inbound.getHeaders())
