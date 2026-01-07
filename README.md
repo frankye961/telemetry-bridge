@@ -1,5 +1,5 @@
-# ai-watering-plant-system-backend
-IoT backend for watering plant system automated with AI based on:
+# telemetry bridge
+IoT backend bridge for messages coming from mqtt broker, sent from arduino:
 - Spring Boot
 - Kafka
 - MQTT
