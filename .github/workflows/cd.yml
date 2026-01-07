@@ -1,0 +1,45 @@
+name: telemetry-bridge CD
+
+on:
+  push:
+    branches: [ "main" ]
+
+concurrency:
+  group: cd-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy-dev:
+    name: Deploy to dev server
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Deploy via SSH (docker compose pull + up)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            echo "==> Go to deploy folder"
+            cd "${{ vars.DEPLOY_PATH }}"
+
+            echo "==> Login to registry (if needed)"
+            echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ vars.REGISTRY || 'ghcr.io' }} -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+
+            echo "==> Pull latest image"
+            # If your compose references the image tag directly, compose pull is enough.
+            docker compose pull "${{ vars.SERVICE_NAME }}"
+
+            echo "==> Restart app service only"
+            docker compose up -d --no-deps "${{ vars.SERVICE_NAME }}"
+
+            echo "==> Show running containers"
+            docker ps
+
+            echo "==> Optional: basic health wait (no curl needed if you have healthcheck in compose)"
+            # If you defined a HEALTHCHECK in docker-compose.yml for the service,
+            # you can rely on docker ps / docker inspect manually, or add a small wait here.
