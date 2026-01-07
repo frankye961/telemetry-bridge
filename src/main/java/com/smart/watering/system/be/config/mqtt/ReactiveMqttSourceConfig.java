@@ -1,5 +1,6 @@
 package com.smart.watering.system.be.config.mqtt;
 
+
 import com.hivemq.client.mqtt.MqttClient;
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
@@ -23,13 +24,12 @@ public class ReactiveMqttSourceConfig {
         return MqttClient.builder()
                 .useMqttVersion3()
                 .identifier(props.clientId())
-                .serverHost(props.host())
-                .serverPort(props.port())
+                .serverHost(props.brokerUri())
                 .buildAsync();
     }
 
     @Bean
-    public Flux<MqttInbound> mqttInboundFlux(Mqtt3AsyncClient client, MqttProps props) {
+    public Flux<MqttInbound> mqttInboundFluxReactive(Mqtt3AsyncClient client, MqttProps props) {
         // Sink = bridge from callback-world to reactive-world
         Sinks.Many<MqttInbound> sink = Sinks.many().multicast().onBackpressureBuffer();
         var connection = client.connectWith().cleanSession(true);
@@ -41,8 +41,8 @@ public class ReactiveMqttSourceConfig {
         Mono<Void> connect = Mono.fromCompletionStage(connection.send()).then();
 
         Mono<Void> subscribe = Mono.fromCompletionStage(client.subscribeWith()
-                .topicFilter(props.topicFilter())
-                .qos(MqttQos.valueOf(props.qos())) // e.g. "AT_LEAST_ONCE"
+                .topicFilter(props.topic())
+                .qos(MqttQos.AT_LEAST_ONCE) // e.g. "AT_LEAST_ONCE" only temporary, to understand and change
                 .callback((Mqtt3Publish publish) -> {
                     String topic = publish.getTopic().toString();
                     String payload = new String(publish.getPayloadAsBytes(), StandardCharsets.UTF_8);

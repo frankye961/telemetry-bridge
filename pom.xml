@@ -15,25 +15,22 @@
     <artifactId>telemetry-bridge</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <name>telemetry-bridge</name>
-    <description>Backend for smart watering system</description>
 
     <properties>
         <java.version>25</java.version>
 
-        <!-- MQTT (HiveMQ) -->
-        <hivemq.mqtt.version>1.3.9</hivemq.mqtt.version>
+        <!-- Boot 4 compatible Spring Cloud (Oakwood) -->
+        <spring-cloud.version>2025.1.0</spring-cloud.version>
 
-        <!-- Sonar (override if your org pins a different one) -->
-        <sonar.maven.plugin.version>4.0.0.4121</sonar.maven.plugin.version>
-        <spring-cloud.version>2024.0.2</spring-cloud.version>
-        <springdoc.version>2.6.0</springdoc.version>
-        <testcontainers.version>1.20.3</testcontainers.version>
-        <!-- Optional: set these in CI env vars instead, but leaving placeholders helps -->
-        <!-- <sonar.host.url>https://sonar.your-company.com</sonar.host.url> -->
-        <!-- <sonar.projectKey>your:project-key</sonar.projectKey> -->
+        <!-- OpenAPI / Swagger UI for Boot 4 -->
+        <springdoc.version>3.0.1</springdoc.version>
+
+        <!-- CI tooling -->
+        <testcontainers.version>2.0.3</testcontainers.version>
+        <sonar.maven.plugin.version>5.5.0.6356</sonar.maven.plugin.version>
+        <openapi.generator.version>7.18.0</openapi.generator.version>
     </properties>
 
-    <!-- BOMs -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -43,6 +40,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
             <dependency>
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
@@ -50,17 +48,8 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- Keep Jackson versions aligned with Boot 3.5.x -->
-            <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
-                <version>2.17.2</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
         </dependencies>
     </dependencyManagement>
-
 
     <dependencies>
         <!-- Reactive HTTP -->
@@ -69,43 +58,41 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
-        <!-- Health/metrics -->
+        <!-- Actuator + Micrometer -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
-        <!-- Prometheus registry for Micrometer -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
-        <!-- Bean validation (optional but common) -->
+        <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-<!--        &lt;!&ndash; MQTT client with Reactor-friendly API &ndash;&gt;
-        <dependency>
-            <groupId>com.hivemq</groupId>
-            <artifactId>hivemq-mqtt-client-reactor</artifactId>
-            <version>${hivemq.mqtt.version}</version>
-        </dependency>-->
-
-        <!-- Spring Cloud Stream -->
+        <!-- Spring Cloud Stream Kafka (use starter, not low-level stream + binder separately) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-stream</artifactId>
+            <artifactId>spring-cloud-starter-stream-kafka</artifactId>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.springframework.integration/spring-integration-mqtt -->
+        <!-- MQTT inbound via Spring Integration (version managed by Boot) -->
         <dependency>
             <groupId>org.springframework.integration</groupId>
             <artifactId>spring-integration-mqtt</artifactId>
-            <version>7.0.1</version>
         </dependency>
+
+        <!-- OpenAPI UI for WebFlux (Boot 4 compatible springdoc 3.x) -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -124,96 +111,44 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-            <version>4.1.1</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.kafka/core -->
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>tools.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-            <version>3.0.0-rc2</version>
-        </dependency>
-        <!-- Spring Cloud Stream Kafka binder (version via Cloud BOM) -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-stream-binder-kafka</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.openapitools</groupId>
-            <artifactId>jackson-databind-nullable</artifactId>
-            <version>0.2.7</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-databind</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-annotations</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <!-- Compile-only servlet API to satisfy generated ApiUtil (no runtime container pulled) -->
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>6.0.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Tests -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
+            <version>1.21.4</version>
         </dependency>
+
+        <!-- If you actually use Spring Security in this module -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>mongodb</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/tools.jackson.core/jackson-databind -->
-        <dependency>
-            <groupId>tools.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>3.0.3</version>
-        </dependency>
-        <dependency>
-            <groupId>com.hivemq</groupId>
-            <artifactId>hivemq-mqtt-client</artifactId>
-            <version>1.3.3</version>
-        </dependency>
-        <dependency>
-            <groupId>io.swagger.core.v3</groupId>
-            <artifactId>swagger-annotations</artifactId>
-            <version>2.2.22</version>
-        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3 -->
         <dependency>
             <groupId>org.eclipse.paho</groupId>
             <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
             <version>1.2.5</version>
         </dependency>
-
+        <!-- https://mvnrepository.com/artifact/com.hivemq/hivemq-mqtt-client -->
+        <dependency>
+            <groupId>com.hivemq</groupId>
+            <artifactId>hivemq-mqtt-client</artifactId>
+            <version>1.3.12</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.openapitools/jackson-databind-nullable -->
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+            <version>0.2.8</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/jakarta.servlet/jakarta.servlet-api -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>6.1.0</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -234,86 +169,48 @@
                 </configuration>
             </plugin>
 
-            <!-- Spring Boot -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Sonar Scanner for Maven -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>${sonar.maven.plugin.version}</version>
             </plugin>
-            <!-- OpenAPI generator (plugin; not a dependency) -->
+
+
             <plugin>
-            <groupId>org.openapitools</groupId>
-            <artifactId>openapi-generator-maven-plugin</artifactId>
-            <version>7.8.0</version>
-            <executions>
-            <execution>
-                <goals>
-                    <goal>generate</goal>
-                </goals>
-                <configuration>
-                    <inputSpec>${project.basedir}/src/main/resources/openapi/iot-events.openapi.yaml</inputSpec>
-                    <generatorName>spring</generatorName>
-                    <apiPackage>com.smart.watering.model</apiPackage>
-                    <modelPackage>com.smart.watering.model</modelPackage>
-                    <!-- Generate MVC interfaces + ApiUtil -->
-                    <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
-                    <configOptions>
-                        <useSpringBoot3>true</useSpringBoot3>
-                        <useJakartaEe>true</useJakartaEe>
-                        <delegatePattern>true</delegatePattern>
-                        <useBeanValidation>true</useBeanValidation>
-                        <useTags>true</useTags>
-                        <generateBuilders>true</generateBuilders>
-
-                        <!-- Turn on Lombok -->
-                        <useLombok>true</useLombok>
-                    </configOptions>
-                </configuration>
-            </execution>
-            <execution>
-                <goals>
-                    <goal>generate</goal>
-                </goals>
-                <id>user-message</id>
-                <configuration>
-                    <inputSpec>
-                        ${project.basedir}/src/main/resources/openapi/mqtt-iot-plant-event.openapi.yaml
-                    </inputSpec>
-                    <generatorName>spring</generatorName>
-                    <apiPackage>com.smart.watering.model</apiPackage>
-                    <modelPackage>com.smart.watering.model</modelPackage>
-                    <!-- Generate MVC interfaces + ApiUtil -->
-                    <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
-                    <configOptions>
-                        <useSpringBoot3>true</useSpringBoot3>
-                        <useJakartaEe>true</useJakartaEe>
-                        <delegatePattern>true</delegatePattern>
-                        <useBeanValidation>true</useBeanValidation>
-                        <useTags>true</useTags>
-                        <generateBuilders>true</generateBuilders>
-
-                        <!-- Turn on Lombok -->
-                        <useLombok>true</useLombok>
-                    </configOptions>
-                </configuration>
-            </execution>
-            </executions>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi.generator.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/src/main/resources/openapi/iot-events.openapi.yaml</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <apiPackage>com.smart.watering.model</apiPackage>
+                            <modelPackage>com.smart.watering.model</modelPackage>
+                            <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
+                            <configOptions>
+                                <!-- OpenAPI Generator flag name hasn't caught up to Boot 4; keep it enabled for Spring Boot-style output -->
+                                <useSpringBoot3>true</useSpringBoot3>
+                                <useJakartaEe>true</useJakartaEe>
+                                <delegatePattern>true</delegatePattern>
+                                <useBeanValidation>true</useBeanValidation>
+                                <useTags>true</useTags>
+                                <generateBuilders>true</generateBuilders>
+                                <useLombok>true</useLombok>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
-
-    <!-- Make sure Lombok version is available via Boot's dependency management.
-         If you want to pin it explicitly, uncomment and set a version: -->
-    <!--
-    <properties>
-      <lombok.version>1.18.36</lombok.version>
-    </properties>
-    -->
 
 </project>

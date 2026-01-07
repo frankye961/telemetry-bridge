@@ -3,49 +3,41 @@ server:
 
 spring:
   application:
-    name: iot-mqtt-kafka-bridge
+    name: telemetry-bridge
 
   main:
     web-application-type: reactive
 
   cloud:
     function:
+      # Use '|' if you want composition (mqttSource -> mqttToKafka).
+      # If you keep them independent, use ';'
       definition: mqttSource|mqttToKafka
 
     stream:
-      # if you ever add other binders later, this keeps behavior explicit
       default-binder: kafka
 
       bindings:
-        # 1) MQTT source -> "internal" stream destination
         mqttSource-out-0:
           destination: mqtt.internal.telemetry
           content-type: application/json
-          producer:
-            # keep ordering per pot across the internal hop too
-            partition-key-expression: headers['kafkaKey']
 
-        # 2) internal stream -> transformer
         mqttToKafka-in-0:
           destination: mqtt.internal.telemetry
           content-type: application/json
-          group: mqtt-bridge              # IMPORTANT (missing)
-          consumer:
-            max-attempts: 3
-            back-off-initial-interval: 1000
-            back-off-max-interval: 10000
+          group: mqtt-bridge
 
-        # 3) transformer -> final Kafka topic
         mqttToKafka-out-0:
           destination: iot.plant.events.raw
           content-type: application/json
           producer:
-            partition-key-expression: headers['kafkaKey']
+            # this matches what you're setting in code: KafkaHeaders.KEY
+            partition-key-expression: "headers['kafka_messageKey']"
 
       kafka:
         binder:
-          brokers: localhost:9092
-          auto-create-topics: true        # dev-friendly
+          brokers: ${SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS:localhost:9092}
+          auto-create-topics: true
           configuration:
             acks: all
             linger.ms: 5
@@ -67,11 +59,10 @@ logging:
 
 app:
   mqtt:
-    host: 192.168.0.29
-    port: 1883
-    client-id: iot-mqtt-reactive-bridge
-    username: ""
-    password: ""
-    topic-filter: "iot/plant/+/+/events"
-    qos: AT_LEAST_ONCE
-
+    # IMPORTANT: must include scheme
+    broker-uri: ${APP_MQTT_BROKER_URI:tcp://${APP_MQTT_HOST:localhost}:${APP_MQTT_PORT:1883}}
+    client-id: ${APP_MQTT_CLIENT_ID:telemetry-bridge}
+    topic: ${APP_MQTT_TOPIC:iot/plant/+/+/events}
+    qos: ${APP_MQTT_QOS:1}
+    username: ${APP_MQTT_USERNAME:}
+    password: ${APP_MQTT_PASSWORD:}

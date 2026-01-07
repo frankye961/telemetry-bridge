@@ -8,7 +8,7 @@ import reactor.core.publisher.Flux;
 @Configuration
 public class TestConfig {
     @Bean
-    Flux<MqttInbound> mqttInboundFlux() {
+    Flux<MqttInbound> mqttInboundFluxTest() {
         return Flux.just(
                 new MqttInbound("iot/plant/dev1/pot-03/events", "{\"a\":1}")
         );
