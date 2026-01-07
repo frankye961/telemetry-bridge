@@ -1,4 +1,4 @@
-name: CD - telemetry-bridge CD
+name: telemetry-bridge CD
 
 on:
   push:
