@@ -40,7 +40,7 @@ public class MqttWateringDataEventListener {
                         .setHeader(MQTT_TOPIC_HEADER, msg.topic())
                         .build())
                 .doOnError(e -> {
-                    log.error("Error in mqttSource stream", e);
+                    log.error("Error in mqttSource stream reading", e);
                     metrics.incrementFailedMessages();
                 })
                 .onErrorResume(e -> Flux.empty());
