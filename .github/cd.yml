@@ -1,4 +1,4 @@
-name: CD - Deploy to Dev
+name: CD - telemetry-bridge CD
 
 on:
   push:
