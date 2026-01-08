@@ -4,7 +4,6 @@ WORKDIR /app
 
 # Copy Maven wrapper and pom for dependency caching
 COPY pom.xml .
-RUN chmod +x mvnw
 RUN ./mvnw -q -DskipTests dependency:go-offline
 
 # Copy sources and build
