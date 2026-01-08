@@ -24,7 +24,7 @@ public class MqttIntegrationConfig {
      * Reactive channel so you can consume MQTT as a Flux downstream (WebFlux-friendly).
      */
     @Bean
-    public MessageChannel mqttInputChannel() {
+    public FluxMessageChannel mqttInputChannel() {
         return new FluxMessageChannel();
     }
 
@@ -88,7 +88,11 @@ public class MqttIntegrationConfig {
      * Expose inbound MQTT messages as a Flux for your Supplier<Flux<...>> function.
      */
     @Bean
-    public Flux<Message<?>> mqttInboundFlux(FluxMessageChannel mqttInputChannel) {
-        return Flux.from(mqttInputChannel);
+    public Flux<MqttInbound> mqttInboundFlux(FluxMessageChannel mqttInputChannel) {
+        return Flux.from(mqttInputChannel)
+                .map(msg -> new MqttInbound(
+                        String.valueOf(msg.getHeaders().get(MqttHeaders.RECEIVED_TOPIC)),
+                        String.valueOf(msg.getPayload())
+                ));
     }
 }
