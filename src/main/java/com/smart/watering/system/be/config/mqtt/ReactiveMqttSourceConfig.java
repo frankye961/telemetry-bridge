@@ -7,6 +7,7 @@ import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
 import com.hivemq.client.mqtt.mqtt3.message.publish.Mqtt3Publish;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -15,9 +16,6 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class ReactiveMqttSourceConfig {
-
-    public record MqttInbound(String topic, String payload) {
-    }
 
     @Bean
     Mqtt3AsyncClient mqttClient(MqttProps props) {
@@ -29,6 +27,7 @@ public class ReactiveMqttSourceConfig {
     }
 
     @Bean
+    @Primary
     public Flux<MqttInbound> mqttInboundFluxReactive(Mqtt3AsyncClient client, MqttProps props) {
         // Sink = bridge from callback-world to reactive-world
         Sinks.Many<MqttInbound> sink = Sinks.many().multicast().onBackpressureBuffer();
