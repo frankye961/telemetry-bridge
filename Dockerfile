@@ -1,25 +1,17 @@
-# ---------- BUILD STAGE ----------
-FROM eclipse-temurin:25-jdk AS build
+# ---- Build stage (has mvn) ----
+FROM maven:3.9.9-eclipse-temurin-25 AS build
 WORKDIR /app
 
-# Copy Maven wrapper and pom for dependency caching
-COPY pom.xml .
+COPY pom.xml ./
 RUN mvn -B -ntp -DskipTests dependency:go-offline
 
-# Copy sources and build
-COPY src src
+COPY src ./src
 RUN mvn -B -ntp -DskipTests package
 
-# ---------- RUNTIME STAGE ----------
+# ---- Runtime stage ----
 FROM eclipse-temurin:25-jre
 WORKDIR /app
-
 COPY --from=build /app/target/*.jar app.jar
 
-# Spring Boot reactive bridge port
 EXPOSE 8080
-
-# Optional JVM tuning
-ENV JAVA_OPTS="-XX:+UseZGC -XX:MaxRAMPercentage=75"
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["java","-jar","/app/app.jar"]
