@@ -4,11 +4,11 @@ WORKDIR /app
 
 # Copy Maven wrapper and pom for dependency caching
 COPY pom.xml .
-RUN ./mvnw -q -DskipTests dependency:go-offline
+RUN mvn -B -ntp -DskipTests dependency:go-offline
 
 # Copy sources and build
 COPY src src
-RUN ./mvnw -q -DskipTests package
+RUN mvn -B -ntp -DskipTests package
 
 # ---------- RUNTIME STAGE ----------
 FROM eclipse-temurin:25-jre
