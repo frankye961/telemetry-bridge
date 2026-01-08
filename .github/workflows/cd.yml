@@ -1,8 +1,9 @@
 name: telemetry-bridge CD
 
 on:
-  push:
-    branches: ["main"]
+  workflow_run:
+    workflows: ["telemetry-bridge CI"]
+    types: [completed]
 
 concurrency:
   group: cd-dev
@@ -17,10 +18,13 @@ jobs:
     name: Deploy to dev (self-hosted)
     runs-on: self-hosted
     environment: dev
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
 
     env:
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}      # e.g. /opt/telemetry-bridge
-      SERVICE_NAME: ${{ vars.SERVICE_NAME }}    # e.g. telemetry-bridge
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       REGISTRY: ghcr.io
 
     steps:
@@ -30,46 +34,27 @@ jobs:
           set -euxo pipefail
           whoami
           id
-          groups
           docker version
           docker compose version
-          echo "DEPLOY_PATH=$DEPLOY_PATH"
-          echo "SERVICE_NAME=$SERVICE_NAME"
           test -d "$DEPLOY_PATH"
           test -f "$DEPLOY_PATH/docker-compose.yml"
           test -f "$DEPLOY_PATH/.env"
-          ls -la "$DEPLOY_PATH"
 
-      - name: Login to GHCR (only needed for private images)
+      - name: Login to GHCR
         shell: bash
         run: |
           set -euxo pipefail
           echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "$REGISTRY" \
             -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-      - name: Deploy (pull + restart service)
+      - name: Deploy (pull + replace container)
         shell: bash
         run: |
           set -euxo pipefail
           cd "$DEPLOY_PATH"
 
-          echo "==> docker compose config (validate interpolation)"
-          docker compose config
-
-          echo "==> Pull"
           docker compose pull "$SERVICE_NAME"
+          docker compose up -d --no-deps --pull always --force-recreate "$SERVICE_NAME"
 
-          echo "==> Up"
-          docker compose up -d --no-deps "$SERVICE_NAME"
-
-          echo "==> docker ps"
           docker ps
-
-      - name: Show service logs on failure
-        if: failure()
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cd "$DEPLOY_PATH"
-          docker compose ps || true
-          docker compose logs --no-color --tail=300 "$SERVICE_NAME" || true
+          docker compose logs --no-color --tail=120 "$SERVICE_NAME" || true
