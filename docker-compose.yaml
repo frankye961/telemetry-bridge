@@ -1,5 +1,5 @@
 services:
-  smart-watering-be:
+  telemetry-bridge:
     image: telemetry-bridge:latest
     container_name: telemetry-bridge
     restart: unless-stopped
