@@ -2,44 +2,53 @@ name: telemetry-bridge CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 concurrency:
   group: cd-dev
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   deploy-dev:
-    name: Deploy to dev server
-    runs-on: ubuntu-latest
+    name: Deploy to dev (self-hosted)
+    runs-on: self-hosted
     environment: dev
 
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}      # e.g. /opt/telemetry-bridge
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}    # e.g. telemetry-bridge
+      REGISTRY: ghcr.io
+
     steps:
-      - name: Deploy via SSH (docker compose pull + up)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEV_HOST }}
-          username: ${{ secrets.DEV_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          script: |
-            set -euo pipefail
+      - name: Sanity checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          whoami
+          docker version
+          docker compose version
+          test -d "$DEPLOY_PATH"
+          test -f "$DEPLOY_PATH/docker-compose.yml"
+          test -f "$DEPLOY_PATH/.env"
 
-            echo "==> Go to deploy folder"
-            cd "${{ vars.DEPLOY_PATH }}"
+      - name: Login to GHCR (only needed for private images)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "$REGISTRY" \
+            -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-            echo "==> Login to registry (if needed)"
-            echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ vars.REGISTRY || 'ghcr.io' }} -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+      - name: Deploy (pull + restart service)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
 
-            echo "==> Pull latest image"
-            # If your compose references the image tag directly, compose pull is enough.
-            docker compose pull "${{ vars.SERVICE_NAME }}"
+          docker compose pull "$SERVICE_NAME"
+          docker compose up -d --no-deps "$SERVICE_NAME"
 
-            echo "==> Restart app service only"
-            docker compose up -d --no-deps "${{ vars.SERVICE_NAME }}"
-
-            echo "==> Show running containers"
-            docker ps
-
-            echo "==> Optional: basic health wait (no curl needed if you have healthcheck in compose)"
-            # If you defined a HEALTHCHECK in docker-compose.yml for the service,
-            # you can rely on docker ps / docker inspect manually, or add a small wait here.
+          docker ps
