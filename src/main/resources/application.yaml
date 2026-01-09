@@ -12,7 +12,7 @@ spring:
     function:
       # Use '|' if you want composition (mqttSource -> mqttToKafka).
       # If you keep them independent, use ';'
-      definition: mqttSource,mqttToKafka
+      definition: mqttSource;mqttToKafka
 
     stream:
       default-binder: kafka
