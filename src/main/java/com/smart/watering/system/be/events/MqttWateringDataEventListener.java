@@ -1,5 +1,7 @@
 package com.smart.watering.system.be.events;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smart.watering.system.be.config.mqtt.MqttInbound;
 import com.smart.watering.system.be.metrics.MeterMetrics;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +22,12 @@ import java.util.function.Supplier;
 public class MqttWateringDataEventListener {
 
     private final MeterMetrics metrics;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public MqttWateringDataEventListener(MeterMetrics metrics) {
+    public MqttWateringDataEventListener(MeterMetrics metrics, ObjectMapper objectMapper) {
         this.metrics = metrics;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -54,8 +58,9 @@ public class MqttWateringDataEventListener {
         String topic = (String) inbound.getHeaders().get(MqttHeaders.RECEIVED_TOPIC);
         String kafkaKey = extractKeyFromTopic(topic);
         log.info("logging payload incoming {}", inbound.getPayload());
+        String payload = mapMessage(inbound.getPayload());
         metrics.incrementSuccessfulMessages();
-        return MessageBuilder.withPayload(inbound.getPayload())
+        return MessageBuilder.withPayload(payload)
                 .copyHeaders(inbound.getHeaders())
                 .setHeader(KafkaHeaders.KEY, kafkaKey)
                 .build();
@@ -72,5 +77,14 @@ public class MqttWateringDataEventListener {
         if (topic == null) return "unknown:unknown";
         String[] p = topic.split("/");
         return (p.length >= 5) ? (p[2] + ":" + p[3]) : "unknown:unknown";
+    }
+
+    private String mapMessage(String message){
+        try{
+            return objectMapper.readTree(message).toString();
+        }catch (Exception e){
+            log.error("Error in reading json {}", e.getMessage());
+            throw new RuntimeException();
+        }
     }
 }
