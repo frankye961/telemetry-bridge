@@ -5,6 +5,7 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.integration.channel.FluxMessageChannel;
 import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
@@ -25,7 +26,7 @@ import java.util.UUID;
 @EnableConfigurationProperties(MqttProps.class)
 public class MqttIntegrationConfig {
 
-    @Bean
+    @Bean(name = "mqttInputChannel")
     public FluxMessageChannel mqttInputChannel() {
         return new FluxMessageChannel();
     }
@@ -55,7 +56,7 @@ public class MqttIntegrationConfig {
         return factory;
     }
 
-    @Bean
+    @Bean(name = "mqttInbound")
     public MessageProducer mqttInbound(
             MqttPahoClientFactory factory,
             MqttProps props,
@@ -82,22 +83,26 @@ public class MqttIntegrationConfig {
         return adapter;
     }
 
-    @Bean
+    @Bean(name = "mqttInboundSink")
     public Sinks.Many<MqttInbound> mqttInboundSink() {
-        return Sinks.many().replay().limit(100);  // buffers last 100 events for late subscribers
+        // replay prevents any race during startup
+        return Sinks.many().replay().limit(200);
     }
 
-    @Bean
+    // ✅ ONE Flux only, named + @Primary so Spring must pick this one
+    @Bean(name = "mqttInboundFlux")
+    @Primary
     public Flux<MqttInbound> mqttInboundFlux(Sinks.Many<MqttInbound> mqttInboundSink) {
         return mqttInboundSink.asFlux()
                 .doOnSubscribe(s -> log.info("mqttInboundFlux SUBSCRIBED ✅"))
-                .doOnNext(x -> log.info("mqttInboundFlux EMIT ✅ topic={}", x.topic()));
+                .doOnNext(x -> log.info("mqttInboundFlux NEXT ✅ topic={}", x.topic()));
     }
 
-    @Bean
+    // ✅ The real subscriber for mqttInputChannel (no ApplicationRunner)
+    @Bean(name = "mqttInputSubscriber")
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public MessageHandler mqttInputSubscriber(Sinks.Many<MqttInbound> mqttInboundSink) {
-        return msg -> {
+        return (Message<?> msg) -> {
             String topic = String.valueOf(msg.getHeaders().get(MqttHeaders.RECEIVED_TOPIC));
             String payload = String.valueOf(msg.getPayload());
 
