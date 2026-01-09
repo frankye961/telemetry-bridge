@@ -5,6 +5,11 @@ spring:
   application:
     name: telemetry-bridge
 
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
   main:
     web-application-type: reactive
 
