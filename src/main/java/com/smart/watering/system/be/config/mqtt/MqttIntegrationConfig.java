@@ -1,6 +1,8 @@
 package com.smart.watering.system.be.config.mqtt;
 
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +18,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.UUID;
 
+@Slf4j
 @Configuration
 @EnableConfigurationProperties(MqttProps.class)
 public class MqttIntegrationConfig {
@@ -94,5 +97,13 @@ public class MqttIntegrationConfig {
                         String.valueOf(msg.getHeaders().get(MqttHeaders.RECEIVED_TOPIC)),
                         String.valueOf(msg.getPayload())
                 ));
+    }
+
+    //Needed for to subscribe to mqtt and avoid exception
+    @Bean
+    public ApplicationRunner subscribeMqttInput(FluxMessageChannel mqttInputChannel) {
+        return args -> Flux.from(mqttInputChannel)
+                .doOnNext(m -> log.info("MQTT RX: {} ", m.getPayload()))
+                .subscribe();
     }
 }
