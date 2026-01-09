@@ -70,7 +70,7 @@ app:
     # IMPORTANT: must include scheme
     broker-uri: ${APP_MQTT_BROKER_URI:tcp://${APP_MQTT_HOST:localhost}:${APP_MQTT_PORT:1883}}
     client-id: ${APP_MQTT_CLIENT_ID:telemetry-bridge}
-    topic: ${APP_MQTT_TOPIC:iot/plant/+/+/events}
+    topic: ${APP_MQTT_TOPIC:mqtt.internal.telemetry}
     qos: ${APP_MQTT_QOS:1}
     username: ${APP_MQTT_USERNAME:}
     password: ${APP_MQTT_PASSWORD:}
