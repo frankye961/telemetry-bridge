@@ -88,7 +88,7 @@ public class MqttIntegrationConfig {
      */
     @Bean
     public Sinks.Many<MqttInbound> mqttInboundSink() {
-        return Sinks.many().multicast().onBackpressureBuffer();
+        return Sinks.many().replay().all();
     }
 
     /**
