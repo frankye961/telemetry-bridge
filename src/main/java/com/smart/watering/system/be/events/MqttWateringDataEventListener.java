@@ -36,7 +36,7 @@ public class MqttWateringDataEventListener {
                     metrics.incrementSuccessfulMessages();
                 })
                 .map(msg -> MessageBuilder.withPayload(msg.payload())
-                        .setHeader(MQTT_TOPIC_HEADER, msg.topic())
+                        .setHeader(MqttHeaders.RECEIVED_TOPIC, msg.topic())
                         .build())
                 .doOnError(e -> {
                     log.error("Error in mqttSource stream reading", e);
