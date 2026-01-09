@@ -36,7 +36,15 @@ spring:
 
       kafka:
         binder:
-          brokers: ${SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS:localhost:9092}
+          bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+          producer:
+            key-serializer: org.apache.kafka.common.serialization.StringSerializer
+            value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+            properties:
+              acks: all
+              enable.idempotence: true
+              max.in.flight.requests.per.connection: 5
+              retries: 10
           auto-create-topics: true
           configuration:
             acks: all
