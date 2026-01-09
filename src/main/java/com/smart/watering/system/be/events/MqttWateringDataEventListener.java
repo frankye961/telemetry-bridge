@@ -29,18 +29,12 @@ public class MqttWateringDataEventListener {
     @Bean
     public Supplier<Flux<Message<String>>> mqttSource(Flux<MqttInbound> inbound) {
         return () -> inbound
-                .doOnNext(msg -> {
-                    log.info("MQTT in topic={} payload={}", msg.topic(), msg.payload());
-                    metrics.incrementSuccessfulMessages();
-                })
+                .doOnSubscribe(s -> log.info("mqttSource SUBSCRIBED..."))
+                .doOnCancel(() -> log.warn("mqttSource CANCELLED"))
+                .doOnNext(msg -> log.info("mqttSource got topic={} payload={}", msg.topic(), msg.payload()))
                 .map(msg -> MessageBuilder.withPayload(msg.payload())
                         .setHeader(MqttHeaders.RECEIVED_TOPIC, msg.topic())
-                        .build())
-                .doOnError(e -> {
-                    log.error("Error in mqttSource stream reading", e);
-                    metrics.incrementFailedMessages();
-                })
-                .onErrorResume(e -> Flux.empty());
+                        .build());
     }
 
     @Bean

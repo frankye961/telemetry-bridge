@@ -10,8 +10,6 @@ spring:
 
   cloud:
     function:
-      # Use '|' if you want composition (mqttSource -> mqttToKafka).
-      # If you keep them independent, use ';'
       definition: mqttSource|mqttToKafka
 
     stream:
