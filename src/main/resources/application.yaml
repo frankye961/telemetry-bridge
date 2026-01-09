@@ -29,7 +29,6 @@ spring:
         binder:
           bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
           producer:
-            use-native-encoding: true
             key-serializer: org.apache.kafka.common.serialization.StringSerializer
             value-serializer: org.apache.kafka.common.serialization.StringSerializer
             properties:
