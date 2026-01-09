@@ -82,41 +82,30 @@ public class MqttIntegrationConfig {
         return adapter;
     }
 
-    /**
-     * A hot stream that your Cloud Stream Supplier can expose.
-     * Multicast so multiple downstream consumers can attach.
-     */
     @Bean
     public Sinks.Many<MqttInbound> mqttInboundSink() {
-        return Sinks.many().replay().all();
+        return Sinks.many().replay().limit(100);  // buffers last 100 events for late subscribers
     }
 
-    /**
-     * Expose inbound MQTT messages as a Flux (WebFlux-friendly).
-     */
     @Bean
     public Flux<MqttInbound> mqttInboundFlux(Sinks.Many<MqttInbound> mqttInboundSink) {
-        return mqttInboundSink.asFlux();
+        return mqttInboundSink.asFlux()
+                .doOnSubscribe(s -> log.info("mqttInboundFlux SUBSCRIBED ✅"))
+                .doOnNext(x -> log.info("mqttInboundFlux EMIT ✅ topic={}", x.topic()));
     }
 
-    /**
-     * IMPORTANT: this is the REAL subscriber to mqttInputChannel.
-     * It is registered during context startup (no race with ApplicationRunner).
-     */
     @Bean
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public MessageHandler mqttInputSubscriber(Sinks.Many<MqttInbound> mqttInboundSink) {
-        return (Message<?> msg) -> {
+        return msg -> {
             String topic = String.valueOf(msg.getHeaders().get(MqttHeaders.RECEIVED_TOPIC));
             String payload = String.valueOf(msg.getPayload());
 
-            // Log to prove you are consuming
             log.info("MQTT RX topic={} payload={}", topic, payload);
 
-            // Push into reactive stream
             Sinks.EmitResult res = mqttInboundSink.tryEmitNext(new MqttInbound(topic, payload));
             if (res.isFailure()) {
-                log.warn("Failed emitting MQTT message to sink: {}", res);
+                log.warn("MQTT emit failed: {}", res);
             }
         };
     }
