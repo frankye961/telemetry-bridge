@@ -21,8 +21,6 @@ public class MqttWateringDataEventListener {
 
     private final MeterMetrics metrics;
 
-    private static final String MQTT_TOPIC_HEADER = "mqttTopic";
-
     @Autowired
     public MqttWateringDataEventListener(MeterMetrics metrics) {
         this.metrics = metrics;

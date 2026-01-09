@@ -18,21 +18,9 @@ spring:
       default-binder: kafka
 
       bindings:
-        mqttSource-out-0:
-          destination: mqtt.internal.telemetry
-          content-type: application/json
-
-        mqttToKafka-in-0:
-          destination: mqtt.internal.telemetry
-          content-type: application/json
-          group: mqtt-bridge
-
-        mqttToKafka-out-0:
+        "mqttSource|mqttToKafka-out-0":
           destination: iot.plant.events.raw
           content-type: application/json
-          producer:
-            # this matches what you're setting in code: KafkaHeaders.KEY
-            partition-key-expression: "headers['kafka_messageKey']"
 
       kafka:
         binder:
